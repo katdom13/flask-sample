@@ -1,0 +1,6 @@
+.coverage
+*cache*/
+*.py[cod]
+*$py.class
+htmlcov/
+
