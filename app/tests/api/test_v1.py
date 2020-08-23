@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from flask import url_for
 
@@ -14,10 +15,9 @@ class TestAPI(TestMixin):
         response = self.login()
 
         actual_data = json.loads(response.get_data(as_text=True))
-        expected_data = {"status": "success"}
 
         assert response.status_code == 200
-        assert actual_data == expected_data
+        assert actual_data["status"] == "success"
 
     def test_login_empty(self):
         """
@@ -78,7 +78,8 @@ class TestAPI(TestMixin):
         Get json of all user accounts
         """
         response = self.login()
-        response = self.client.get(url_for("v1.get_users"))
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.client.get(url_for("v1.get_users"), headers={'x-access-token': token})
 
         assert response.status_code == 200
         assert Account.query.count() == 1
@@ -100,7 +101,8 @@ class TestAPI(TestMixin):
         Get a single user
         """
         response = self.login()
-        response = self.client.get(url_for("v1.get_user", username="admin"))
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.client.get(url_for("v1.get_user", username="admin"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
 
         assert response.status_code == 200
@@ -111,7 +113,8 @@ class TestAPI(TestMixin):
         Fetching error: No user found
         """
         response = self.login()
-        response = self.client.get(url_for("v1.get_user", username="none"))
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.client.get(url_for("v1.get_user", username="none"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
         expected_data = {"error": "No user found"}
 
@@ -160,8 +163,9 @@ class TestAPI(TestMixin):
         data = {"username": "@dmin", "password": "pass"}
 
         response = self.login()
+        token = json.loads(response.get_data(as_text=True))['token']
         response = self.client.put(
-            url_for("v1.update_user", username="admin"), json=data
+            url_for("v1.update_user", username="admin"), json=data, headers={'x-access-token': token}
         )
         actual_data = json.loads(response.get_data(as_text=True))
         new_pass = actual_data["user"]["password"]
@@ -193,8 +197,9 @@ class TestAPI(TestMixin):
         data = {"username": "@dmin"}
 
         response = self.login()
+        token = json.loads(response.get_data(as_text=True))['token']
         response = self.client.put(
-            url_for("v1.update_user", username="none"), json=data
+            url_for("v1.update_user", username="none"), json=data, headers={'x-access-token': token}
         )
         actual_data = json.loads(response.get_data(as_text=True))
         expected_data = {"error": "No user found"}
@@ -209,7 +214,8 @@ class TestAPI(TestMixin):
         old_user_count = Account.query.count()
 
         response = self.login()
-        response = self.client.delete(url_for("v1.delete_user", username="disabled"))
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.client.delete(url_for("v1.delete_user", username="disabled"), headers={'x-access-token': token})
 
         new_user_count = Account.query.count()
 
@@ -235,7 +241,8 @@ class TestAPI(TestMixin):
         Delete user error: No user found
         """
         response = self.login()
-        response = self.client.delete(url_for("v1.delete_user", username="none"))
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.client.delete(url_for("v1.delete_user", username="none"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
         expected_data = {"error": "No user found"}
 
@@ -247,7 +254,8 @@ class TestAPI(TestMixin):
         Log the user out
         """
         response = self.login()
-        response = self.logout()
+        token = json.loads(response.get_data(as_text=True))['token']
+        response = self.logout(token)
         actual_data = json.loads(response.get_data(as_text=True))
 
         assert response.status_code == 200

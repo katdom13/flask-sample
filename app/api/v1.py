@@ -1,4 +1,5 @@
 from flask import Blueprint, request
+from flask_cors import cross_origin
 from flask_login import login_user, logout_user
 
 from app.lib import decrypt_password, encrypt_password, login_required
@@ -8,6 +9,7 @@ v1 = Blueprint("v1", __name__, url_prefix="/api/v1")
 
 
 @v1.route("/users", methods=["GET"])
+@cross_origin()
 @login_required
 def get_users():
     """
@@ -25,6 +27,7 @@ def get_users():
 
 
 @v1.route("/users/<username>", methods=["GET"])
+@cross_origin()
 @login_required
 def get_user(username):
     """
@@ -42,6 +45,7 @@ def get_user(username):
 
 
 @v1.route("/users", methods=["POST"])
+@cross_origin()
 def create_user():
     """
     Creates and adds a new user
@@ -49,6 +53,15 @@ def create_user():
     :return: dict
     """
     data = request.get_json()
+
+    username = data.get("username")
+    if Account.find(username):
+        return {"error": "User already exists"}, 403
+
+    # print("================================")
+    # print(request.data)
+    # print("================================")
+    # print(request.get_json())
     encrypted_password = encrypt_password(data["password"])
 
     user = Account(
@@ -60,11 +73,17 @@ def create_user():
     )
 
     user.save()
+    login_user(user, remember=True)
 
-    return {"status": "success", "user": user.get_dict()}
+    return {
+        "status": "success",
+        "user": user.get_dict(),
+        "token": user.serialize_token(),
+    }
 
 
 @v1.route("/users/<username>", methods=["PUT"])
+@cross_origin()
 @login_required
 def update_user(username):
     user = Account.find(username)
@@ -74,12 +93,15 @@ def update_user(username):
 
     data = request.get_json()
 
+    if "old_pass" in data.keys() and "new_pass" in data.keys():
+        if decrypt_password(data["old_pass"], user.password):
+            setattr(user, "password", encrypt_password(data["new_pass"]))
+        else:
+            return {"error": "Current password is incorrect"}, 401
+
     for key, value in data.items():
         if hasattr(user, key):
-            if key == "password":
-                setattr(user, key, encrypt_password(value))
-            else:
-                setattr(user, key, value)
+            setattr(user, key, value)
 
     user.save()
 
@@ -87,6 +109,7 @@ def update_user(username):
 
 
 @v1.route("/users/<username>", methods=["DELETE"])
+@cross_origin()
 @login_required
 def delete_user(username):
     user = Account.find(username)
@@ -99,33 +122,8 @@ def delete_user(username):
     return {"status": "success", "user": user.get_dict()}
 
 
-# @v1.route("/login")
-# def login():
-#     auth = request.authorization
-
-#     if not auth or not auth.username or not auth.password:
-#         return make_response(
-#             "Could not verify",
-#             401,
-#             {"WWW-Authenticate": "Basic realm='Login required'"},
-#         )
-
-#     user = Account.find(auth.username)
-
-#     if not user:
-#         return {"error": "No user found"}, 404
-
-#     if decrypt_password(auth.password, user.password):
-#         if user.is_active():
-#             login_user(user, remember=True)
-#             return {"status": "success"}
-#         else:
-#             {"error": "Account is inactive"}, 401
-#     else:
-#         return {"error": "Invalid credentials provided"}, 401
-
-
 @v1.route("/login", methods=["POST"])
+@cross_origin()
 def login():
     auth = request.get_json()
 
@@ -140,7 +138,11 @@ def login():
     if decrypt_password(auth.get("password"), user.password):
         if user.is_active():
             login_user(user, remember=True)
-            return {"status": "success"}
+            return {
+                "status": "success",
+                "user": user.get_dict(),
+                "token": user.serialize_token(),
+            }
         else:
             return {"error": "Account is inactive"}, 401
     else:
@@ -148,6 +150,7 @@ def login():
 
 
 @v1.route("/logout")
+@cross_origin()
 @login_required
 def logout():
     logout_user()

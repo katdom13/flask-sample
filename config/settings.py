@@ -6,6 +6,9 @@ DEBUG = True
 SERVER_NAME = "localhost"
 REMEMBER_COOKIE_DURATION = timedelta(days=3)
 
+#  CORS
+CORS_HEADERS = "Content-Type"
+
 # Database variables
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_DATABASE_URI = "sqlite:///../app.db"

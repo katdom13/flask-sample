@@ -2,8 +2,8 @@ from datetime import datetime
 from functools import wraps
 
 import pytest
-from flask import url_for
-from flask_login import current_user
+from flask import request, url_for
+from flask_login import login_user
 from werkzeug import security
 
 from app.extensions import db
@@ -67,10 +67,23 @@ def login_required(func):
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
-        if not current_user.is_authenticated:
+        token = None
+
+        if "x-access-token" in request.headers:
+            token = request.headers["x-access-token"]
+
+        if not token:
             return {"error": "You are unauthorized to do that"}, 401
-        else:
-            return func(*args, **kwargs)
+
+        from app.models import Account
+
+        user = Account.deserialize_token(token)
+
+        if not user:
+            return {"error": "You are unauthorized to do that"}, 401
+
+        login_user(user, remember=True)
+        return func(*args, **kwargs)
 
     return decorated_view
 
@@ -99,10 +112,10 @@ class TestMixin(object):
         response = self.client.post(url_for("v1.login"), json=user)
         return response
 
-    def logout(self):
+    def logout(self, token=None):
         """
         Logs the current user out
 
         :return: Flask response
         """
-        return self.client.get(url_for("v1.logout"))
+        return self.client.get(url_for("v1.logout"), headers={'x-access-token': token})

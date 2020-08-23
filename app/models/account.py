@@ -1,6 +1,8 @@
 import uuid
 
+from flask import current_app
 from flask_login import UserMixin
+from itsdangerous import TimedJSONWebSignatureSerializer
 
 from app.extensions import db, ma
 from app.lib import ResourceMixin
@@ -34,6 +36,23 @@ class Account(db.Model, UserMixin, ResourceMixin):
             (cls.username == identity) | (cls.public_id == identity)
         ).first()
 
+    @classmethod
+    def deserialize_token(cls, token):
+        """
+        Obtain a user from de-serializing a signed token.
+
+        :param token: Signed token
+        :type token: str
+        :return: User instance or None
+        """
+        private_key = TimedJSONWebSignatureSerializer(current_app.config["SECRET_KEY"])
+
+        try:
+            decoded_payload = private_key.loads(token)
+            return Account.find(decoded_payload.get("username"))
+        except Exception:
+            return None
+
     def is_active(self):
         """
         Return whether or not the user account is active, this satisfies
@@ -48,6 +67,19 @@ class Account(db.Model, UserMixin, ResourceMixin):
         Override from UserMixin
         """
         return self.username
+
+    def serialize_token(self, expiration=3600):
+        """
+        Sign and create a token that can be used for things such as resetting a password
+        or othe tasks that involve a one-off token.
+
+        :param expiration: Seconds until the token expires, defaults to 1 hour
+        :type expiration: int
+        :return: str
+        """
+        private_key = current_app.config["SECRET_KEY"]
+        serializer = TimedJSONWebSignatureSerializer(private_key, expiration)
+        return serializer.dumps({"username": self.username}).decode("utf-8")
 
     def get_dict(self):
         """

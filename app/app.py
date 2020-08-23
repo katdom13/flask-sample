@@ -1,8 +1,8 @@
 from flask import Flask
 
-from app.models import Account
-from app.extensions import db, login_manager, ma
 from app.api import v1
+from app.extensions import cors, db, login_manager, ma
+from app.models import Account
 
 
 def create_app(settings_override=None):
@@ -36,6 +36,8 @@ def extensions(app):
     db.init_app(app)
     login_manager.init_app(app)
     ma.init_app(app)
+    # cors.init_app(app, resources={r"/api/v1/*": {"origins": "*"}})
+    cors.init_app(app)
 
 
 def authentication(app, model):
