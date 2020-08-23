@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from functools import wraps
 
@@ -110,7 +111,8 @@ class TestMixin(object):
         """
         user = dict(identity=identity, password=password)
         response = self.client.post(url_for("v1.login"), json=user)
-        return response
+        token = json.loads(response.get_data(as_text=True))['token']
+        return response, token
 
     def logout(self, token=None):
         """

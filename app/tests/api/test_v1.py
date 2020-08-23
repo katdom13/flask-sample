@@ -1,5 +1,4 @@
 import json
-import pytest
 
 from flask import url_for
 
@@ -12,7 +11,7 @@ class TestAPI(TestMixin):
         """
         Login is successful
         """
-        response = self.login()
+        response, _ = self.login()
 
         actual_data = json.loads(response.get_data(as_text=True))
 
@@ -77,8 +76,7 @@ class TestAPI(TestMixin):
         """
         Get json of all user accounts
         """
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.get(url_for("v1.get_users"), headers={'x-access-token': token})
 
         assert response.status_code == 200
@@ -100,8 +98,7 @@ class TestAPI(TestMixin):
         """
         Get a single user
         """
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.get(url_for("v1.get_user", username="admin"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
 
@@ -112,8 +109,7 @@ class TestAPI(TestMixin):
         """
         Fetching error: No user found
         """
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.get(url_for("v1.get_user", username="none"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
         expected_data = {"error": "No user found"}
@@ -162,8 +158,7 @@ class TestAPI(TestMixin):
 
         data = {"username": "@dmin", "password": "pass"}
 
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.put(
             url_for("v1.update_user", username="admin"), json=data, headers={'x-access-token': token}
         )
@@ -196,8 +191,7 @@ class TestAPI(TestMixin):
         """
         data = {"username": "@dmin"}
 
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.put(
             url_for("v1.update_user", username="none"), json=data, headers={'x-access-token': token}
         )
@@ -213,8 +207,7 @@ class TestAPI(TestMixin):
         """
         old_user_count = Account.query.count()
 
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.delete(url_for("v1.delete_user", username="disabled"), headers={'x-access-token': token})
 
         new_user_count = Account.query.count()
@@ -240,8 +233,7 @@ class TestAPI(TestMixin):
         """
         Delete user error: No user found
         """
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.client.delete(url_for("v1.delete_user", username="none"), headers={'x-access-token': token})
         actual_data = json.loads(response.get_data(as_text=True))
         expected_data = {"error": "No user found"}
@@ -253,8 +245,7 @@ class TestAPI(TestMixin):
         """
         Log the user out
         """
-        response = self.login()
-        token = json.loads(response.get_data(as_text=True))['token']
+        response, token = self.login()
         response = self.logout(token)
         actual_data = json.loads(response.get_data(as_text=True))
 
